@@ -74,7 +74,7 @@ void DiscordBot::SendIdentify()
     EnqueuePayload(
         "{\"op\":2,\"d\":{"
         "\"token\":\"" + token_ + "\","
-        "\"intents\":33280,"
+        "\"intents\":33281,"
         "\"properties\":{\"os\":\"windows\",\"browser\":\"libcurl\",\"device\":\"libcurl\"}"
         "}}"
     );
@@ -97,6 +97,8 @@ void DiscordBot::HandleGuildCreate(const std::string& data)
     auto guild_id = GetJsonValue(data, "id");
     if (!guild_id) return;
 
+    std::cerr << "[DiscordBot] HandleGuildCreate for guild " << *guild_id << '\n';
+
     // Find the "channels" array
     size_t pos = data.find("\"channels\"");
     if (pos == std::string::npos) return;
@@ -107,6 +109,7 @@ void DiscordBot::HandleGuildCreate(const std::string& data)
     // Walk each channel object in the array
     int depth = 0;
     size_t obj_start = std::string::npos;
+    int loaded_count = 0;
 
     for (size_t i = pos; i < data.size(); ++i) {
         if (data[i] == '{') {
@@ -124,11 +127,18 @@ void DiscordBot::HandleGuildCreate(const std::string& data)
                 if (id && name && type) {
                     try {
                         Channel ch;
+                        ch.pawn_id  = 0;  // Will be assigned by Add()
                         ch.id       = *id;
                         ch.name     = *name;
                         ch.guild_id = *guild_id;
                         ch.type     = std::stoi(*type);
-                        channel_store::Add(ch);
+
+                        auto pawn_id = channel_store::Add(ch);
+                        if (pawn_id != 0) {
+                            std::cerr << "[DiscordBot]   Channel: " << *name 
+                                      << " (pawn_id=" << pawn_id << ", discord_id=" << *id << ")\n";
+                            ++loaded_count;
+                        }
                     } catch (...) {}
                 }
                 obj_start = std::string::npos;
@@ -138,7 +148,8 @@ void DiscordBot::HandleGuildCreate(const std::string& data)
         }
     }
 
-    std::cout << "[DiscordBot] Guild " << *guild_id << " channels loaded.\n";
+    std::cerr << "[DiscordBot] Guild " << *guild_id << " loaded " << loaded_count << " channels.\n";
+    is_ready_ = true;
 }
 
 void DiscordBot::ProcessPacket(const std::string& packet)
@@ -163,11 +174,11 @@ void DiscordBot::ProcessPacket(const std::string& packet)
 
     if (*op == "0") {                       // Dispatch
         auto t = GetJsonValue(packet, "t");
+        std::cout << "[DiscordBot] Dispatch event: " << *t << '\n';
         if (t && *t == "READY") {
             std::cout << "[DiscordBot] Bot is online and ready.\n";
             {
                 std::lock_guard<std::mutex> lock(ready_mutex_);
-                is_ready_ = true;
             }
             ready_cv_.notify_all();
         } else if (t && *t == "GUILD_CREATE") {

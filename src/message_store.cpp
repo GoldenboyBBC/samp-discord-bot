@@ -32,4 +32,10 @@ const Message* FindById(const std::string& id) {
     return FindByHandle(it->second);
 }
 
+MessageHandle FindHandleById(const std::string& id) {
+    auto it = s_id_to_handle.find(id);
+    if (it == s_id_to_handle.end()) return INVALID_MESSAGE_HANDLE;
+    return it->second;
+}
+
 } // namespace message_store

@@ -17,7 +17,7 @@ cell AMX_NATIVE_CALL FindChannelByName(AMX* amx, cell* params) {
     amx_StrParam(amx, params[1], name);
     if (!name) return 0;
     const Channel* ch = channel_store::FindByName(name);
-    return ch ? 1 : 0;
+    return ch ? ch->pawn_id : 0;
 }
 
 // DCC_FindChannelById(const id[])
@@ -27,24 +27,21 @@ cell AMX_NATIVE_CALL FindChannelById(AMX* amx, cell* params) {
     amx_StrParam(amx, params[1], id);
     if (!id) return 0;
     const Channel* ch = channel_store::FindById(id);
-    return ch ? 1 : 0;
+    return ch ? ch->pawn_id : 0;
 }
 
-// DCC_SendChannelMessage(const channel_id[], const message[])
+// DCC_SendChannelMessage(DCC_Channel:channel, const message[])
 cell AMX_NATIVE_CALL SendChannelMessage(AMX* amx, cell* params) {
     if (params[0] < 2 * sizeof(cell)) return 0;
 
-    char* channel_id = nullptr;
-    amx_StrParam(amx, params[1], channel_id);
-    if (!channel_id) return 0;
-
+    ChannelId channel_id = static_cast<ChannelId>(params[1]);
     char* text = nullptr;
     amx_StrParam(amx, params[2], text);
     if (!text) return 0;
 
-    const Channel* ch = channel_store::FindById(channel_id);
+    const Channel* ch = channel_store::FindByPawnId(channel_id);
     if (!ch) {
-        std::cerr << "[messages] Channel not found: " << channel_id << '\n';
+        std::cerr << "[messages] Channel not found: pawn_id=" << channel_id << '\n';
         return 0;
     }
 

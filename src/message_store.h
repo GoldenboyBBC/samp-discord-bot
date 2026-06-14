@@ -13,6 +13,7 @@ struct Message {
 
 // A handle is just an integer Pawn uses to reference a stored message
 using MessageHandle = int;
+const MessageHandle INVALID_MESSAGE_HANDLE = 0;
 
 namespace message_store {
 
@@ -24,5 +25,6 @@ void Remove(MessageHandle handle);
 // Returns nullptr if not found
 const Message* FindByHandle(MessageHandle handle);
 const Message* FindById    (const std::string& id);
+MessageHandle FindHandleById(const std::string& id);
 
 } // namespace message_store
